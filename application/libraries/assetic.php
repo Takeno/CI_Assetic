@@ -7,6 +7,7 @@ spl_autoload_register(function($className) {
 
 use Assetic\Asset\AssetCollection;
 use Assetic\Asset\FileAsset;
+use Assetic\Asset\StringAsset;
 use Assetic\Asset\HttpAsset;
 use Assetic\Asset\GlobAsset;
 use Assetic\Filter\LessFilter;
@@ -31,7 +32,7 @@ class CI_Assetic {
 			$this->config = $tmp_config['assetic'];
 			unset ($tmp_config);
 		} else
-			$this->_error('jquery_ext_configuration_error');
+			$this->_error('assetic configuration error');
 
 		$this->CI->load->helper('url');
 
@@ -43,27 +44,33 @@ class CI_Assetic {
 
 		foreach($this->config['css']['autoload'] as $filename)
 			$this->addCss($filename);
-
 	}
 
-	public function addJs($filename, $group = 'common') {
-		$group .= '.js';
-		if(!isset($this->collections['js'][$group]))
-			$this->collections['js'][$group] = new AssetCollection();
+	protected function addAsset($asset, $type, $group) {
+		if($group == null)
+			$group = $this->config[$type]['default-group'];
 
+		$group .= '.'.$type;
+		if(!isset($this->collections[$type][$group]))
+			$this->collections[$type][$group] = new AssetCollection();
+		$this->collections[$type][$group]->add($asset);
+	}
+
+	public function addJs($filename, $group = null) {
 		if(parse_url($filename, PHP_URL_SCHEME) === null && strpos($filename, '//:') !== 0)
 			$asset = new FileAsset($filename);
 		else
 			$asset = new HttpAsset($filename);
 
-		$this->collections['js'][$group]->add( $asset );
+		$this->addAsset($asset, 'js', $group);
 	}
 
-	public function addJsDir($path, $group = 'common') {
-		$group .= '.js';
-		if(!isset($this->collections['js'][$group]))
-			$this->collections['js'][$group] = new AssetCollection();
-		$this->collections['js'][$group]->add( new GlobAsset($path) );
+	public function addJsDir($path, $group = null) {
+		$this->addAsset( new GlobAsset($path) , 'js', $group);
+	}
+
+	public function addScript($script, $group = null) {
+		$this->addAsset( new StringAsset($script) , 'js', $group);
 	}
 
 	public function getJs() {
@@ -71,13 +78,15 @@ class CI_Assetic {
 	}
 
 	public function writeJsScripts() {
-		$urls = array();
+		$scripts = array();
 		foreach ($this->collections['js'] as $ac)
-			$this->recursiveAssets($ac, $urls);
-		$urls = array_unique($urls);
+			$this->recursiveAssets($ac, $scripts);
 
-		foreach($urls as $url)
-			echo '<script src="'.$url.'"></script>'."\n";
+		foreach($scripts as $script)
+			if(true === $script['url'])
+				echo '<script src="'.$script['content'].'"></script>'."\n";
+			else
+				echo '<script>'.$script['content'].'</script>'."\n";
 	}
 
 	public function writeStaticJsScripts() {
@@ -87,8 +96,10 @@ class CI_Assetic {
 		$urls = array();
 
 		foreach ($this->collections['js'] as $filename => $ac) {
-			$ac->setTargetPath($filename);
-			$this->writer->writeAsset($ac);
+			if(!file_exists($this->config['static']['dir'].$filename)) {
+				$ac->setTargetPath($filename);
+				$this->writer->writeAsset($ac);
+			}
 			$urls[] = base_url($this->config['static']['dir'].$filename);
 		}
 
@@ -96,18 +107,22 @@ class CI_Assetic {
 			echo '<script src="'.$url.'"></script>'."\n";
 	}
 
-	public function addCss($filename, $group = 'style') {
-		$group .= '.css';
-		if(!isset($this->collections['css'][$group]))
-			$this->collections['css'][$group] = new AssetCollection();
-		$this->collections['css'][$group]->add( new FileAsset($filename) );
+
+	public function addCss($filename, $group = null) {
+		if(parse_url($filename, PHP_URL_SCHEME) === null && strpos($filename, '//:') !== 0)
+			$asset = new FileAsset($filename);
+		else
+			$asset = new HttpAsset($filename);
+
+		$this->addAsset($asset, 'css', $group);
 	}
 
-	public function addCssDir($path, $group = 'style') {
-		$group .= '.css';
-		if(!isset($this->collections['css'][$group]))
-			$this->collections['css'][$group] = new AssetCollection();
-		$this->collections['css'][$group]->add( new GlobAsset($path) );
+	public function addCssDir($path, $group = null) {
+		$this->addAsset( new GlobAsset($path) , 'css', $group);
+	}
+
+	public function addStyle($script, $group = null) {
+		$this->addAsset( new StringAsset($script) , 'css', $group);
 	}
 
 	public function getCss() {
@@ -115,13 +130,15 @@ class CI_Assetic {
 	}
 
 	public function writeCssLinks() {
-		$urls = array();
+		$styles = array();
 		foreach ($this->collections['css'] as $ac)
-			$this->recursiveAssets($ac, $urls);
-		$urls = array_unique($urls);
+			$this->recursiveAssets($ac, $styles);
 
-		foreach($urls as $url)
-			echo '<link rel="stylesheet" type="text/css" href="'.$url.'" />'."\n";
+		foreach($styles as $style)
+			if(true === $style['url'])
+				echo '<link rel="stylesheet" type="text/css" href="'.$style['content'].'" />'."\n";
+			else
+				echo '<style>'.$style['content'].'"</style>'."\n";
 	}
 
 	public function writeStaticCssLinks() {
@@ -131,9 +148,12 @@ class CI_Assetic {
 		$urls = array();
 
 		foreach ($this->collections['css'] as $filename => $ac) {
-			$ac->setTargetPath($filename);
-			$this->writer->writeAsset($ac);
-			$urls[] = base_url($this->config['static']['dir'].$filename);
+			if(!file_exists($this->config['static']['dir'].$filename)) {
+				$ac->setTargetPath($filename);
+				$this->writer->writeAsset($ac);
+			}
+			$urls[] = base_url($this->config['static']['dir'].$filename);	
+			
 		}
 
 		foreach($urls as $url)
@@ -141,15 +161,17 @@ class CI_Assetic {
 	}
 
 
-	private function recursiveAssets(AssetCollection $ac, &$urls) {
+	private function recursiveAssets(AssetCollection $ac, &$tag) {
 		foreach($ac->all() as $el) {
 			if($el instanceof AssetCollection)
-				$this->recursiveAssets($el, $urls);
+				$this->recursiveAssets($el, $tag);
+			elseif($el instanceof StringAsset)
+				$tag[] = array('url' => false, 'content' => $el->dump());
 			else {
 				$filename = $el->getSourceRoot().'/'.$el->getSourcePath();
 				if(parse_url($filename, PHP_URL_SCHEME) === null && strpos($filename, '//:') !== 0)
 					$filename = base_url($filename);
-				$urls[] = $filename;
+				$tag[$filename] = array('url' => true, 'content' => $filename);
 			}
 		}
 	}

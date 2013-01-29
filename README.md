@@ -12,17 +12,18 @@ $config['assetic'] = array(
 		'autoload' => array(
 			'http://code.jquery.com/jquery-1.9.0.js',
 			'js/my-fantastic-effects.js'
-		)
+		),
+		'default-group'	=> 'common',
 	),
 	'css' => array(
 		//For every page
 		'autoload' => array(
 			'css/main.css',
 			'css/top.css'
-		)
+		),
+		'default-group'	=> 'style',
 	),
 	'static' => array(
-		'enabled'			=> true,
 		//Directory where Assetic puts the merged files
 		'dir'				=> 'static/',
 	)
@@ -68,6 +69,7 @@ How to use Assetic in Views.
 	//e.g. index.css
 	//The default filename is 'style.css' used by autoload
 	$this->assetic->addCss('css/only-index.css', 'index');
+	$this->assetic->addStyle('p { color:#0F0; }', 'index');
 	$this->load->view('header');
 ?>
 <p>Hello World</p>
@@ -75,7 +77,8 @@ How to use Assetic in Views.
 	//The second parameter will be the name of the merged file
 	//e.g. index.js
 	//The default filename is 'common.js' used by autoload
-	$this->assetic->addJs('js/index/*', 'index');
+	$this->assetic->addJsDir('js/index/*', 'index');
+	$this->assetic->addScript('console.log("Hello world!");', 'index');
 	$this->load->view('footer'); ?>
 ```
 
@@ -90,12 +93,14 @@ How to use Assetic in Views.
 	<link rel="stylesheet" type="text/css" href="http://www.example.com/css/main.css" />
 	<link rel="stylesheet" type="text/css" href="http://www.example.com/css/top.css" />
 	<link rel="stylesheet" type="text/css" href="http://www.example.com/css/only-index.css" />
+	<style>p { color:#0F0; }</style>
 </head>
 <body>
 	<p>Hello World</p>
 	<script src="http://code.jquery.com/jquery-1.9.0.js"></script>
 	<script src="http://www.example.com/js/index/a.js"></script>
 	<script src="http://www.example.com/js/index/b.js"></script>
+	<script>console.log("Hello world!");</script>
 </body>
 </html>
 ```
