@@ -3,7 +3,7 @@
 /*
  * This file is part of the Assetic package, an OpenSky project.
  *
- * (c) 2010-2012 OpenSky Project Inc
+ * (c) 2010-2013 OpenSky Project Inc
  *
  * For the full copyright and license information, please view the LICENSE
  * file that was distributed with this source code.
@@ -350,7 +350,7 @@ class CompassFilter extends BaseProcessFilter
         $proc = $pb->getProcess();
         $code = $proc->run();
 
-        if (0 < $code) {
+        if (0 !== $code) {
             unlink($input);
             if (isset($configFile)) {
                 unlink($configFile);

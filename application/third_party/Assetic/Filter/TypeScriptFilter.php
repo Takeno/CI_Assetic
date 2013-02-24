@@ -15,75 +15,49 @@ use Assetic\Asset\AssetInterface;
 use Assetic\Exception\FilterException;
 
 /**
- * Compiles Handlebars templates into Javascript.
+ * Compiles TypeScript into JavaScript.
  *
- * @link http://handlebarsjs.com/
- * @author Keyvan Akbary <keyvan@funddy.com>
+ * @link http://www.typescriptlang.org/
+ * @author Jarrod Nettles <jarrod.nettles@icloud.com>
  */
-class HandlebarsFilter extends BaseNodeFilter
+class TypeScriptFilter extends BaseNodeFilter
 {
-    private $handlebarsBin;
+    private $tscBin;
     private $nodeBin;
 
-    private $minimize = false;
-    private $simple = false;
-
-    public function __construct($handlebarsBin = '/usr/bin/handlebars', $nodeBin = null)
+    public function __construct($tscBin = '/usr/bin/tsc', $nodeBin = null)
     {
-        $this->handlebarsBin = $handlebarsBin;
+        $this->tscBin = $tscBin;
         $this->nodeBin = $nodeBin;
-    }
-
-    public function setMinimize($minimize)
-    {
-        $this->minimize = $minimize;
-    }
-
-    public function setSimple($simple)
-    {
-        $this->simple = $simple;
     }
 
     public function filterLoad(AssetInterface $asset)
     {
         $pb = $this->createProcessBuilder($this->nodeBin
-            ? array($this->nodeBin, $this->handlebarsBin)
-            : array($this->handlebarsBin));
+            ? array($this->nodeBin, $this->tscBin)
+            : array($this->tscBin));
 
         $templateName = basename($asset->getSourcePath());
 
         $inputDirPath = sys_get_temp_dir().DIRECTORY_SEPARATOR.uniqid('input_dir');
-        $inputPath = $inputDirPath.DIRECTORY_SEPARATOR.$templateName;
+        $inputPath = $inputDirPath.DIRECTORY_SEPARATOR.$templateName.'.ts';
         $outputPath = tempnam(sys_get_temp_dir(), 'output');
 
         mkdir($inputDirPath);
         file_put_contents($inputPath, $asset->getContent());
 
-        $pb->add($inputPath)->add('-f')->add($outputPath);
+        $pb->add($inputPath)->add('--out')->add($outputPath);
 
-        if ($this->minimize) {
-            $pb->add('--min');
-        }
-
-        if ($this->simple) {
-            $pb->add('--simple');
-        }
-
-        $process = $pb->getProcess();
-        $returnCode = $process->run();
-
+        $proc = $pb->getProcess();
+        $code = $proc->run();
         unlink($inputPath);
         rmdir($inputDirPath);
 
-        if (127 === $returnCode) {
-            throw new \RuntimeException('Path to node executable could not be resolved.');
-        }
-
-        if (0 !== $returnCode) {
+        if (0 !== $code) {
             if (file_exists($outputPath)) {
                 unlink($outputPath);
             }
-            throw FilterException::fromProcess($process)->setInput($asset->getContent());
+            throw FilterException::fromProcess($proc)->setInput($asset->getContent());
         }
 
         if (!file_exists($outputPath)) {
