@@ -57,7 +57,7 @@ class CI_Assetic {
 	}
 
 	public function addJs($filename, $group = null) {
-		if(parse_url($filename, PHP_URL_SCHEME) === null && strpos($filename, '//:') !== 0)
+		if(strpos($filename, '://') === false)
 			$asset = new FileAsset($filename);
 		else
 			$asset = new HttpAsset($filename);
@@ -109,7 +109,7 @@ class CI_Assetic {
 
 
 	public function addCss($filename, $group = null) {
-		if(parse_url($filename, PHP_URL_SCHEME) === null && strpos($filename, '//:') !== 0)
+		if(strpos($filename, '://') === false)
 			$asset = new FileAsset($filename);
 		else
 			$asset = new HttpAsset($filename);
@@ -169,7 +169,7 @@ class CI_Assetic {
 				$tag[] = array('url' => false, 'content' => $el->dump());
 			else {
 				$filename = $el->getSourceRoot().'/'.$el->getSourcePath();
-				if(parse_url($filename, PHP_URL_SCHEME) === null && strpos($filename, '//:') !== 0)
+				if(strpos($filename, '://') === false)
 					$filename = base_url($filename);
 				$tag[$filename] = array('url' => true, 'content' => $filename);
 			}
